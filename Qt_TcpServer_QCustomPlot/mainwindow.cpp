@@ -52,7 +52,7 @@ MainWindow::MainWindow(QWidget *parent)
     QString localIP = getLocalIP();
     ui->comboBoxListenIp->addItem(localIP);
     tcpServer=new QTcpServer(this);
-    connect(tcpServer,SIGNAL(newConnection()),this,SLOT(onNewConnection()));
+    connect(tcpServer,SIGNAL(newConnection()),this,SLOT(slot_tcpServer_newConnection()));
 
     // 新建波形显示界面
     plot = new Plot;
@@ -61,13 +61,14 @@ MainWindow::MainWindow(QWidget *parent)
     qDebug()<<"start..."<<endl;
 }
 
+//获取本地IP
 QString MainWindow::getLocalIP()
 {//获取本机IPv4地址
     QString hostName=QHostInfo::localHostName();//本地主机名
     QHostInfo   hostInfo=QHostInfo::fromName(hostName);
     QString   localIP="";
 
-    QList<QHostAddress> addList=hostInfo.addresses();//
+    QList<QHostAddress> addList=hostInfo.addresses();
 
     if (!addList.isEmpty())
     for (int i=0;i<addList.count();i++)
@@ -80,21 +81,6 @@ QString MainWindow::getLocalIP()
         }
     }
     return localIP;
-}
-
-void MainWindow::onNewConnection()
-{
-    tcpSocket = tcpServer->nextPendingConnection(); //创建socket
-
-    connect(tcpSocket, SIGNAL(connected()),this, SLOT(onClientConnected()));
-    onClientConnected();
-
-    connect(tcpSocket, SIGNAL(disconnected()),this, SLOT(onClientDisconnected()));
-
-    connect(tcpSocket,SIGNAL(stateChanged(QAbstractSocket::SocketState)),this,SLOT(slot_tcpSocket_stateChanged(QAbstractSocket::SocketState)));
-    slot_tcpSocket_stateChanged(tcpSocket->state());
-
-    connect(tcpSocket,SIGNAL(readyRead()),this,SLOT(slot_tcpSocket_readyRead()));
 }
 
 // 显示本地所有IPv4地址
@@ -124,7 +110,34 @@ void MainWindow::on_pushButtonShowLocalIp_clicked()
     }
 }
 
+//tcpServer新建连接槽函数
+void MainWindow::slot_tcpServer_newConnection()
+{
+    tcpSocket = tcpServer->nextPendingConnection(); //创建socket
 
+    connect(tcpSocket, SIGNAL(connected()),this, SLOT(slot_tcpSocket_connected()));
+    slot_tcpSocket_connected();
+
+    connect(tcpSocket, SIGNAL(disconnected()),this, SLOT(slot_tckSocket_disonnected()));
+
+    connect(tcpSocket,SIGNAL(stateChanged(QAbstractSocket::SocketState)),this,SLOT(slot_tcpSocket_stateChanged(QAbstractSocket::SocketState)));
+    slot_tcpSocket_stateChanged(tcpSocket->state());
+
+    connect(tcpSocket,SIGNAL(readyRead()),this,SLOT(slot_tcpSocket_readyRead()));
+}
+
+//tcpSocket连接成功
+void MainWindow::slot_tcpSocket_connected()
+{
+    ui->comboBoxClientIp->addItem(tcpSocket->peerAddress().toString());
+    ui->spinBoxClientPort->setValue(tcpSocket->peerPort());
+}
+
+//tcpSocket连接断开
+void MainWindow::slot_tckSocket_disonnected()
+{
+    tcpSocket->deleteLater();
+}
 
 //UDP 状态变化
 void MainWindow::slot_tcpSocket_stateChanged(QAbstractSocket::SocketState socketState)
@@ -154,17 +167,6 @@ void MainWindow::slot_tcpSocket_stateChanged(QAbstractSocket::SocketState socket
     }
 }
 
-void MainWindow::onClientConnected()
-{//客户端接入时
-    ui->comboBoxClientIp->addItem(tcpSocket->peerAddress().toString());
-    ui->spinBoxClientPort->setValue(tcpSocket->peerPort());
-}
-
-void MainWindow::onClientDisconnected()
-{
-    tcpSocket->deleteLater();
-}
-
 MainWindow::~MainWindow()
 {
     closeCsvFile();
@@ -174,6 +176,51 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
+//开始监听
+void MainWindow::on_pushButtonListen_clicked()
+{
+    if(ui->pushButtonListen->isChecked()){
+        QString     IP=ui->comboBoxListenIp->currentText(); //IP地址
+        quint16     port=ui->spinBoxListenPort->value();    //端口
+        QHostAddress    addr(IP);
+
+        //tcpServer->listen(QHostAddress::LocalHost,port);
+        //Equivalent to QHostAddress("127.0.0.1").
+        if (tcpServer->listen(addr,port)){
+            ui->pushButtonListen->setChecked(true);
+            ui->comboBoxListenIp->setEnabled(false);
+            ui->spinBoxListenPort->setEnabled(false);
+            ui->comboBoxClientIp->setEnabled(false);
+            ui->spinBoxClientPort->setEnabled(false);
+            ui->labelListenState->setText("监听状态: 正在监听");
+
+            if(ui->actionSaveCsv->isChecked()){
+                //以当前日期时间戳创建CSV文件
+                openCsvFile();
+            }
+            //TCP使用过程中锁定保存按钮不可用
+            ui->actionSaveCsv->setEnabled(false);
+        }
+    }
+    else{
+        if (tcpServer->isListening()) //tcpServer正在监听
+        {
+            tcpServer->close();       //停止监听
+            ui->pushButtonListen->setChecked(false);
+            ui->comboBoxListenIp->setEnabled(true);
+            ui->spinBoxListenPort->setEnabled(true);
+            ui->comboBoxListenIp->setEnabled(true);
+            ui->spinBoxListenPort->setEnabled(true);
+            ui->labelListenState->setText("监听状态：已停止监听");
+
+            if(ui->actionSaveCsv->isChecked()){
+                //关闭文件
+                closeCsvFile();
+            }
+            ui->actionSaveCsv->setEnabled(true);
+        }
+    }
+}
 
 //清除接收窗口
 void MainWindow::on_pushButtonClearRec_clicked()
@@ -670,44 +717,4 @@ void MainWindow::saveCsvFile(QByteArray baRecvData)
 
 
 
-void MainWindow::on_pushButtonListen_clicked()
-{
-    if(ui->pushButtonListen->isChecked()){
-        QString     IP=ui->comboBoxListenIp->currentText();//IP地址
-        quint16     port=ui->spinBoxListenPort->value();//端口
-        QHostAddress    addr(IP);
-
-        //tcpServer->listen(QHostAddress::LocalHost,port);
-        //Equivalent to QHostAddress("127.0.0.1").
-        if (tcpServer->listen(addr,port)){
-            ui->pushButtonListen->setChecked(true);     //
-            ui->comboBoxListenIp->setEnabled(false);    //
-            ui->spinBoxListenPort->setEnabled(false);   //
-            ui->labelListenState->setText("监听状态: 正在监听");
-
-            if(ui->actionSaveCsv->isChecked()){
-                //以当前日期时间戳创建CSV文件
-                openCsvFile();
-            }
-            //TCP使用过程中锁定保存按钮不可用
-            ui->actionSaveCsv->setEnabled(false);
-        }
-    }
-    else{
-        if (tcpServer->isListening()) //tcpServer正在监听
-        {
-            tcpServer->close();       //停止监听
-            ui->pushButtonListen->setChecked(false);     //
-            ui->comboBoxListenIp->setEnabled(true);      //
-            ui->spinBoxListenPort->setEnabled(true);     //
-            ui->labelListenState->setText("监听状态：已停止监听");
-
-            if(ui->actionSaveCsv->isChecked()){
-                //关闭文件
-                closeCsvFile();
-            }
-            ui->actionSaveCsv->setEnabled(true);
-        }
-    }
-}
 

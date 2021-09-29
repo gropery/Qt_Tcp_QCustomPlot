@@ -35,13 +35,11 @@ public:
 
 private slots:
     void on_pushButtonShowLocalIp_clicked();        //显示本地所有IP地址
-    void onNewConnection();
-
-    void slot_tcpSocket_readyRead();                //TCP 数据接收函数
+    void slot_tcpServer_newConnection();            //tcpServer新建连接槽函数
+    void slot_tcpSocket_connected();                //tcpSocket连接成功
+    void slot_tckSocket_disonnected();              //tcpSocket连接断开
     void slot_tcpSocket_stateChanged(QAbstractSocket::SocketState socketState); //TCP 状态变化
-    void onClientConnected();
-    void onClientDisconnected();
-
+    void slot_tcpSocket_readyRead();                //TCP 数据接收函数
 
     void on_pushButtonListen_clicked();             //开始监听
     void on_pushButtonClearRec_clicked();           //清除接收
@@ -78,7 +76,7 @@ private:
     // TCP
     QTcpServer *tcpServer;      //TCP服务器
     QTcpSocket *tcpSocket;      //TCP通讯的Socket
-    QString getLocalIP();
+    QString getLocalIP();       //获取本地IP
 
     //-----------------------
     //发送接收数量，速率计算
@@ -126,7 +124,5 @@ private:
     void openCsvFile(void);
     void closeCsvFile(void);
     void saveCsvFile(QByteArray baRecvData);
-
-
 };
 #endif // MAINWINDOW_H
