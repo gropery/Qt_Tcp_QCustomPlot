@@ -42,6 +42,7 @@ private slots:
     void slot_tcpSocket_readyRead();                //TCP 数据接收函数
 
     void on_pushButtonListen_clicked();             //开始监听
+    void on_pushButtonStopListen_clicked();         //停止监听
     void on_pushButtonClearRec_clicked();           //清除接收
     void on_pushButtonClearSend_clicked();          //清除发送
     void slot_timerUpdateLabel_timeout();           //统计数据更新定时器槽函数
@@ -63,7 +64,6 @@ private slots:
     void on_checkBoxWaveGeneStart_stateChanged(int arg1);   //tab4 仿真波形开始
 
     void on_actionPlotShow_triggered();                     //显示Plot窗口
-
 
 private:
     void changeEncodeStrAndHex(QPlainTextEdit *plainTextEdit,int arg1); //切换字符编码与16进制

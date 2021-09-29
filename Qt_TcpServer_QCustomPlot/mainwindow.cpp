@@ -179,46 +179,47 @@ MainWindow::~MainWindow()
 //开始监听
 void MainWindow::on_pushButtonListen_clicked()
 {
-    if(ui->pushButtonListen->isChecked()){
-        QString     IP=ui->comboBoxListenIp->currentText(); //IP地址
-        quint16     port=ui->spinBoxListenPort->value();    //端口
-        QHostAddress    addr(IP);
+    QString     IP=ui->comboBoxListenIp->currentText(); //IP地址
+    quint16     port=ui->spinBoxListenPort->value();    //端口
+    QHostAddress    addr(IP);
 
-        //tcpServer->listen(QHostAddress::LocalHost,port);
-        //Equivalent to QHostAddress("127.0.0.1").
-        if (tcpServer->listen(addr,port)){
-            ui->pushButtonListen->setChecked(true);
-            ui->comboBoxListenIp->setEnabled(false);
-            ui->spinBoxListenPort->setEnabled(false);
-            ui->comboBoxClientIp->setEnabled(false);
-            ui->spinBoxClientPort->setEnabled(false);
-            ui->labelListenState->setText("监听状态: 正在监听");
+    //tcpServer->listen(QHostAddress::LocalHost,port);
+    //Equivalent to QHostAddress("127.0.0.1").
+    if (tcpServer->listen(addr,port)){
+        ui->pushButtonListen->setEnabled(false);
+        ui->pushButtonStopListen->setEnabled(true);
+        ui->comboBoxListenIp->setEnabled(false);
+        ui->spinBoxListenPort->setEnabled(false);
+        ui->comboBoxClientIp->setEnabled(false);
+        ui->spinBoxClientPort->setEnabled(false);
 
-            if(ui->actionSaveCsv->isChecked()){
-                //以当前日期时间戳创建CSV文件
-                openCsvFile();
-            }
-            //TCP使用过程中锁定保存按钮不可用
-            ui->actionSaveCsv->setEnabled(false);
+        if(ui->actionSaveCsv->isChecked()){
+            //以当前日期时间戳创建CSV文件
+            openCsvFile();
         }
+        //TCP使用过程中锁定保存按钮不可用
+        ui->actionSaveCsv->setEnabled(false);
     }
-    else{
-        if (tcpServer->isListening()) //tcpServer正在监听
-        {
-            tcpServer->close();       //停止监听
-            ui->pushButtonListen->setChecked(false);
-            ui->comboBoxListenIp->setEnabled(true);
-            ui->spinBoxListenPort->setEnabled(true);
-            ui->comboBoxListenIp->setEnabled(true);
-            ui->spinBoxListenPort->setEnabled(true);
-            ui->labelListenState->setText("监听状态：已停止监听");
+}
 
-            if(ui->actionSaveCsv->isChecked()){
-                //关闭文件
-                closeCsvFile();
-            }
-            ui->actionSaveCsv->setEnabled(true);
+//停止监听
+void MainWindow::on_pushButtonStopListen_clicked()
+{
+    if (tcpServer->isListening()) //tcpServer正在监听
+    {
+        tcpServer->close();       //停止监听
+        ui->pushButtonListen->setEnabled(true);
+        ui->pushButtonStopListen->setEnabled(false);
+        ui->comboBoxListenIp->setEnabled(true);
+        ui->spinBoxListenPort->setEnabled(true);
+        ui->comboBoxListenIp->setEnabled(true);
+        ui->spinBoxListenPort->setEnabled(true);
+
+        if(ui->actionSaveCsv->isChecked()){
+            //关闭文件
+            closeCsvFile();
         }
+        ui->actionSaveCsv->setEnabled(true);
     }
 }
 
@@ -714,7 +715,3 @@ void MainWindow::saveCsvFile(QByteArray baRecvData)
         *m_csvFileTextStream << "\n";
     }
 }
-
-
-
-
